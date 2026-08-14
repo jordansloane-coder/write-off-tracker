@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#14110a">
+<title>Write-Off Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Write-Offs">
+<link rel="stylesheet" href="style.css?v=1">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER / BIG NUMBER -->
+  <header class="hero" id="hero">
+    <div class="hero-top">
+      <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <div class="trip-label">Write-Off Tracker</div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+    </div>
+
+    <div class="year-switch-wrap">
+      <button type="button" class="icon-btn small" id="yearPrevBtn" aria-label="Previous year">‹</button>
+      <span class="year-label" id="yearLabel">2026</span>
+      <button type="button" class="icon-btn small" id="yearNextBtn" aria-label="Next year">›</button>
+    </div>
+
+    <div class="big-number-wrap">
+      <div class="big-number" id="bigNumber">$0</div>
+      <div class="big-sub" id="bigSub">deductible this year</div>
+    </div>
+  </header>
+
+  <!-- QUICK ADD BAR -->
+  <div class="quick-add">
+    <button class="fab-btn secondary" id="scanBtn">
+      <span class="fab-icon">📸</span><span>Scan Receipt</span>
+    </button>
+    <button class="fab-btn primary" id="addBtn">
+      <span class="fab-icon">＋</span><span>Add Expense</span>
+    </button>
+  </div>
+
+  <!-- EXPENSE LIST -->
+  <main class="list-wrap">
+    <div class="list-header">
+      <h2>Expenses</h2>
+      <span class="count-pill" id="countPill">0</span>
+    </div>
+    <ul id="expenseList" class="expense-list"></ul>
+    <div class="empty-state" id="emptyState">
+      <div class="empty-emoji">🧾</div>
+      <p>No deductible expenses logged yet. Log one, or scan a receipt.</p>
+    </div>
+  </main>
+
+  <footer class="footer-actions">
+    <button class="text-btn" id="exportCsvBtn">Export CSV</button>
+    <button class="text-btn" id="exportReportBtn">Export Report</button>
+  </footer>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- Add / Edit Expense Modal -->
+<div class="modal-overlay" id="expenseModalOverlay">
+  <div class="modal" id="expenseModal">
+    <div class="modal-header">
+      <h3 id="expenseModalTitle">Add Expense</h3>
+      <button class="icon-btn" data-close="expenseModalOverlay">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="receiptPreviewWrap" class="receipt-preview-wrap" style="display:none;">
+        <img id="receiptPreviewImg" class="receipt-preview-img" alt="Receipt">
+      </div>
+
+      <button type="button" class="ai-read-btn" id="aiReadBtn">
+        <span class="fab-icon">🪄</span><span>Read from Photo — fills this form in for you</span>
+      </button>
+
+      <label class="field">
+        <span class="field-label">Amount</span>
+        <div class="amount-input-wrap">
+          <span class="dollar-sign">$</span>
+          <input type="number" inputmode="decimal" step="0.01" min="0" id="amountInput" placeholder="0.00">
+        </div>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Vendor / Description</span>
+        <input type="text" id="vendorInput" placeholder="e.g. Client lunch, flight, software">
+      </label>
+
+      <div class="field">
+        <span class="field-label">Category</span>
+        <div class="category-chip-row" id="categoryChipRow"></div>
+        <input type="text" id="categoryInput" placeholder="Type a category…" list="categoryDatalist">
+        <datalist id="categoryDatalist"></datalist>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Date</span>
+        <input type="date" id="dateInput">
+      </label>
+
+      <div class="field">
+        <span class="field-label">Receipt Photo</span>
+        <div class="photo-row">
+          <button type="button" class="secondary-btn" id="attachPhotoBtn">📎 Attach photo</button>
+          <button type="button" class="secondary-btn danger-text" id="removePhotoBtn" style="display:none;">Remove</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" id="photoFileInput" style="display:none;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="secondary-btn" id="deleteExpenseBtn" style="display:none;">Delete</button>
+      <button class="primary-btn" id="saveExpenseBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scan Receipt Modal -->
+<div class="modal-overlay" id="scanModalOverlay">
+  <div class="modal" id="scanModal">
+    <div class="modal-header">
+      <h3>Scan Receipt</h3>
+      <button class="icon-btn" data-close="scanModalOverlay">✕</button>
+    </div>
+    <div class="modal-body" id="scanModalBody">
+
+      <div id="scanChooseStep" class="scan-step">
+        <p class="scan-hint">Take a photo of your receipt, or choose one from your library. Claude will try to read the vendor, total, date and category for you.</p>
+        <div class="scan-choose-row">
+          <button class="secondary-btn big" id="scanCameraBtn">📷 Camera</button>
+          <button class="secondary-btn big" id="scanLibraryBtn">🖼️ Library</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" id="scanCameraInput" style="display:none;">
+        <input type="file" accept="image/*" id="scanLibraryInput" style="display:none;">
+        <p class="scan-no-key" id="scanNoKeyNote" style="display:none;">No Anthropic API key set — you can still attach the photo and enter details manually. <button class="link-btn" id="scanNoKeySettingsLink">Add a key in Settings</button></p>
+      </div>
+
+      <div id="scanLoadingStep" class="scan-step" style="display:none;">
+        <div class="scan-loading-img-wrap">
+          <img id="scanLoadingImg" class="receipt-preview-img" alt="Receipt">
+        </div>
+        <div class="spinner"></div>
+        <p class="scan-hint">Reading receipt…</p>
+      </div>
+
+      <div id="scanErrorStep" class="scan-step" style="display:none;">
+        <p class="scan-error-text" id="scanErrorText"></p>
+        <button class="secondary-btn" id="scanErrorManualBtn">Enter manually instead</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModalOverlay">
+  <div class="modal" id="settingsModal">
+    <div class="modal-header">
+      <h3>Settings</h3>
+      <button class="icon-btn" data-close="settingsModalOverlay">✕</button>
+    </div>
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Anthropic API key <span class="field-optional">(optional — enables receipt scanning)</span></span>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+        <p class="field-help">Stored only on this device. Get a key at <span class="mono">console.anthropic.com</span>. This is separate from your claude.ai subscription and is billed pay-as-you-go (a receipt scan costs a small fraction of a cent).</p>
+      </label>
+
+      <div class="settings-section">
+        <span class="field-label section-label">Backup</span>
+        <p class="field-help">Saves a copy of your expenses to a file in your own Google Drive — never through any server of mine, and your API key is never included.</p>
+        <div id="googleSignedOutView">
+          <button type="button" class="secondary-btn" id="googleSignInBtn" style="width:100%;">🔒 Sign in with Google</button>
+        </div>
+        <div id="googleSignedInView" style="display:none;">
+          <p class="field-help" id="googleBackupStatus"></p>
+          <div class="photo-row">
+            <button type="button" class="secondary-btn" id="driveBackupBtn">☁️ Back Up Now</button>
+            <button type="button" class="secondary-btn" id="driveRestoreBtn">⬇️ Restore</button>
+          </div>
+          <button type="button" class="secondary-btn danger-text" id="googleSignOutBtn" style="width:100%;margin-top:8px;">Disconnect Google</button>
+        </div>
+      </div>
+
+      <div class="danger-zone">
+        <button class="secondary-btn danger-text" id="resetYearBtn" style="width:100%;">Clear this year's expenses</button>
+        <button class="secondary-btn" id="loadSampleBtn" style="width:100%;margin-top:8px;">🧪 Load sample data (for testing)</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="primary-btn" id="saveSettingsBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal (printable) -->
+<div class="modal-overlay" id="reportModalOverlay">
+  <div class="modal modal-wide" id="reportModal">
+    <div class="modal-header no-print">
+      <h3>Write-Off Report</h3>
+      <div class="modal-header-actions">
+        <button class="secondary-btn" id="exportReportCsvBtn">CSV</button>
+        <button class="primary-btn" id="printReportBtn">PDF / Print</button>
+        <button class="icon-btn" data-close="reportModalOverlay">✕</button>
+      </div>
+    </div>
+    <div class="modal-body report-body" id="reportBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js?v=1"></script>
+<script src="claude.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
