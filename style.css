@@ -446,6 +446,33 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   color: #1a1408;
 }
 
+.combo-wrap { position: relative; }
+.combo-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 28px -10px rgba(0,0,0,0.4);
+  z-index: 30;
+}
+.combo-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.combo-item:last-child { border-bottom: none; }
+.combo-item:active { background: var(--bg-elevated); }
+
 .photo-row { display: flex; gap: 10px; }
 
 .ai-read-btn {

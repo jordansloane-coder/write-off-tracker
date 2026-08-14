@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const DEFAULT_CATEGORIES = ['Business Meals', 'Travel', 'Mileage', 'Supplies', 'Home Office', 'Professional Services', 'Other'];
+  const DEFAULT_CATEGORIES = ['Business Meals', 'Travel', 'Mileage', 'Equipment', 'Supplies', 'Home Office', 'Professional Services', 'Other'];
   const MAX_IMAGE_DIM = 1400;
 
   const state = {
@@ -23,7 +23,7 @@
 
     expenseModalOverlay: $('expenseModalOverlay'), expenseModalTitle: $('expenseModalTitle'),
     amountInput: $('amountInput'), vendorInput: $('vendorInput'), dateInput: $('dateInput'),
-    categoryInput: $('categoryInput'), categoryChipRow: $('categoryChipRow'), categoryDatalist: $('categoryDatalist'),
+    categoryInput: $('categoryInput'), categoryChipRow: $('categoryChipRow'), categoryDropdown: $('categoryDropdown'),
     receiptPreviewWrap: $('receiptPreviewWrap'), receiptPreviewImg: $('receiptPreviewImg'),
     attachPhotoBtn: $('attachPhotoBtn'), removePhotoBtn: $('removePhotoBtn'), photoFileInput: $('photoFileInput'),
     saveExpenseBtn: $('saveExpenseBtn'), deleteExpenseBtn: $('deleteExpenseBtn'), aiReadBtn: $('aiReadBtn'),
@@ -133,10 +133,13 @@
     return expenses.reduce((sum, e) => sum + e.amount, 0);
   }
 
-  function allCategories() {
-    const used = activeExpenses().map((e) => e.category).filter(Boolean);
-    const set = new Set([...DEFAULT_CATEGORIES, ...used]);
-    return Array.from(set);
+  // Categories you've typed that aren't one of the fixed defaults, across every year —
+  // not just the current one, so something like "Camera Rental" used last year still
+  // shows up as a suggestion this year instead of having to be retyped from scratch.
+  function customCategories() {
+    const used = new Set(state.allExpenses.map((e) => e.category).filter(Boolean));
+    for (const cat of DEFAULT_CATEGORIES) used.delete(cat);
+    return Array.from(used).sort((a, b) => a.localeCompare(b));
   }
 
   // ---------- render ----------
@@ -152,7 +155,7 @@
   }
 
   const CATEGORY_EMOJI = {
-    'Business Meals': '🍽️', 'Travel': '✈️', 'Mileage': '🚗', 'Supplies': '📎',
+    'Business Meals': '🍽️', 'Travel': '✈️', 'Mileage': '🚗', 'Equipment': '🎥', 'Supplies': '📎',
     'Home Office': '🏠', 'Professional Services': '💼', 'Other': '🧾',
   };
 
@@ -206,10 +209,13 @@
   });
 
   // ---------- expense modal ----------
+  // Category picking has two parts: a fixed row of one-tap chips for the small set of
+  // defaults (never grows), plus a scrollable, filter-as-you-type dropdown below the
+  // text field for anything custom you've typed before — so a year of custom categories
+  // doesn't turn into an ever-growing wall of buttons.
   function renderCategoryChips(selected) {
     el.categoryChipRow.innerHTML = '';
-    el.categoryDatalist.innerHTML = '';
-    for (const cat of allCategories()) {
+    for (const cat of DEFAULT_CATEGORIES) {
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'category-chip' + (cat === selected ? ' selected' : '');
@@ -217,14 +223,50 @@
       chip.addEventListener('click', () => {
         el.categoryInput.value = cat;
         renderCategoryChips(cat);
+        closeCategoryDropdown();
       });
       el.categoryChipRow.appendChild(chip);
-
-      const opt = document.createElement('option');
-      opt.value = cat;
-      el.categoryDatalist.appendChild(opt);
     }
   }
+
+  function closeCategoryDropdown() {
+    el.categoryDropdown.style.display = 'none';
+    el.categoryDropdown.innerHTML = '';
+  }
+
+  function renderCategoryDropdown(filterText) {
+    const q = (filterText || '').trim().toLowerCase();
+    const matches = customCategories().filter((cat) => !q || cat.toLowerCase().includes(q));
+
+    if (matches.length === 0) { closeCategoryDropdown(); return; }
+
+    el.categoryDropdown.innerHTML = '';
+    for (const cat of matches) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'combo-item';
+      item.textContent = `${CATEGORY_EMOJI[cat] || '🏷️'} ${cat}`;
+      // mousedown (not click) fires before the input's blur, so the tap registers
+      // before the dropdown gets hidden by the blur handler below.
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        el.categoryInput.value = cat;
+        renderCategoryChips(cat);
+        closeCategoryDropdown();
+      });
+      el.categoryDropdown.appendChild(item);
+    }
+    el.categoryDropdown.style.display = '';
+  }
+
+  el.categoryInput.addEventListener('focus', () => renderCategoryDropdown(el.categoryInput.value));
+  el.categoryInput.addEventListener('input', () => {
+    renderCategoryDropdown(el.categoryInput.value);
+    renderCategoryChips(el.categoryInput.value);
+  });
+  el.categoryInput.addEventListener('blur', () => {
+    setTimeout(closeCategoryDropdown, 150);
+  });
 
   function openExpenseModal(existing = null, prefill = null) {
     state.editingId = existing ? existing.id : null;
@@ -240,6 +282,7 @@
     el.dateInput.value = source.date || (state.selectedYear === new Date().getFullYear() ? todayISO() : `${state.selectedYear}-01-01`);
     el.categoryInput.value = source.category || '';
     renderCategoryChips(source.category || '');
+    closeCategoryDropdown();
 
     if (state.pendingPhoto) {
       el.receiptPreviewImg.src = state.pendingPhoto;
@@ -389,6 +432,7 @@
     if (parsed.category) el.categoryInput.value = parsed.category;
     if (parsed.address) state.pendingAddress = parsed.address;
     renderCategoryChips(el.categoryInput.value);
+    closeCategoryDropdown();
   }
 
   el.scanBtn.addEventListener('click', () => { scanFillTarget = 'new'; resetScanModal(); openModal(el.scanModalOverlay); });
@@ -516,13 +560,15 @@
   }
 
   el.loadSampleBtn.addEventListener('click', async () => {
-    if (!confirm(`Add 6 fake sample expenses (with mock receipt photos) to ${state.selectedYear} so you can preview the report? You can clear them afterward with "Clear ${state.selectedYear}'s expenses".`)) return;
+    if (!confirm(`Add 7 fake sample expenses (with mock receipt photos) to ${state.selectedYear} so you can preview the report? You can clear them afterward with "Clear ${state.selectedYear}'s expenses".`)) return;
 
     const mk = makeSampleReceiptImage;
     const sample = [
       { vendor: 'The Capital Grille', category: 'Business Meals', amount: 128.40, offsetDays: -12,
         photo: mk('Capital Grille', '123 Main St, Atlanta GA', [['Client Lunch x2', '$118.00'], ['Tax', '$10.40']], '$128.40') },
       { vendor: 'Delta Air Lines', category: 'Travel', amount: 342.00, offsetDays: -30, photo: null },
+      { vendor: 'B&H Photo', category: 'Equipment', amount: 649.00, offsetDays: -22,
+        photo: mk('B&H Photo', '420 9th Ave, New York NY', [['Camera Lens', '$649.00']], '$649.00') },
       { vendor: 'The Home Depot', category: 'Supplies', amount: 64.32, offsetDays: -8,
         photo: mk('The Home Depot', '1801 Howell Mill Rd, Atlanta GA', [['Shelving Unit', '$56.99'], ['Tax', '$7.33']], '$64.32') },
       { vendor: 'Adobe', category: 'Professional Services', amount: 54.99, offsetDays: -20, photo: null },

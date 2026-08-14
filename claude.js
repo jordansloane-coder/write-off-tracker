@@ -10,8 +10,8 @@ const ClaudeReceipts = (() => {
 Extract the vendor name, the FINAL total amount charged (not subtotal, include tax/tip if shown), the date, the printed store address/location if the receipt shows one, and guess a spending category.
 Respond with ONLY raw JSON, no markdown fences, no commentary, matching exactly this shape:
 {"vendor": string|null, "total": number|null, "date": "YYYY-MM-DD"|null, "category": string|null, "address": string|null}
-Category must be one of: "Business Meals", "Travel", "Mileage", "Supplies", "Home Office", "Professional Services", "Other" — pick your best guess.
-"Business Meals" is for restaurants, takeout, and coffee — meals with clients, colleagues, or while traveling for work. "Travel" covers flights, hotels, rideshares, parking, tolls. "Supplies" covers physical goods and equipment. "Professional Services" covers things like legal, accounting, consulting, or software/subscription fees.
+Category must be one of: "Business Meals", "Travel", "Mileage", "Equipment", "Supplies", "Home Office", "Professional Services", "Other" — pick your best guess.
+"Business Meals" is for restaurants, takeout, and coffee — meals with clients, colleagues, or while traveling for work. "Travel" covers flights, hotels, rideshares, parking, tolls. "Equipment" is durable gear that lasts — cameras, lenses, computers, tools, electronics. "Supplies" is consumables and small physical goods — cables, batteries, paper, tape, materials used up on the job. "Professional Services" covers things like legal, accounting, consulting, or software/subscription fees.
 "address" is whatever street address / city / location text is printed on the receipt itself (often near the top, under the store name) — not a guess, only what's actually legible on the page.
 If a field truly cannot be determined from the image, use null for it. Never fabricate a value.`;
 
