@@ -5,14 +5,14 @@
 // the <script>/<link> tags in index.html — that busts Netlify's CDN cache and
 // the browser's plain HTTP cache, independent of this service worker's own
 // cache-first strategy below (both layers can otherwise serve stale JS/CSS).
-const CACHE_NAME = 'write-off-tracker-v3';
+const CACHE_NAME = 'write-off-tracker-v4';
 const SHELL_FILES = [
   './',
   './index.html',
-  './style.css?v=3',
-  './app.js?v=3',
-  './db.js?v=3',
-  './claude.js?v=3',
+  './style.css?v=4',
+  './app.js?v=4',
+  './db.js?v=4',
+  './claude.js?v=4',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

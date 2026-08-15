@@ -22,7 +22,7 @@
     addBtn: $('addBtn'), scanBtn: $('scanBtn'), menuBtn: $('menuBtn'), settingsBtn: $('settingsBtn'),
 
     expenseModalOverlay: $('expenseModalOverlay'), expenseModalTitle: $('expenseModalTitle'),
-    amountInput: $('amountInput'), vendorInput: $('vendorInput'), dateInput: $('dateInput'),
+    amountInput: $('amountInput'), vendorInput: $('vendorInput'), notesInput: $('notesInput'), dateInput: $('dateInput'),
     categoryInput: $('categoryInput'), categoryChipRow: $('categoryChipRow'), categoryDropdown: $('categoryDropdown'),
     receiptPreviewWrap: $('receiptPreviewWrap'), receiptPreviewImg: $('receiptPreviewImg'),
     attachPhotoBtn: $('attachPhotoBtn'), removePhotoBtn: $('removePhotoBtn'), photoFileInput: $('photoFileInput'),
@@ -279,6 +279,7 @@
     const source = existing || prefill || {};
     el.amountInput.value = source.amount != null ? source.amount : '';
     el.vendorInput.value = source.vendor || '';
+    el.notesInput.value = source.notes || '';
     el.dateInput.value = source.date || (state.selectedYear === new Date().getFullYear() ? todayISO() : `${state.selectedYear}-01-01`);
     el.categoryInput.value = source.category || '';
     renderCategoryChips(source.category || '');
@@ -336,6 +337,7 @@
         id: state.editingId || uid(),
         amount,
         vendor: el.vendorInput.value.trim() || 'Expense',
+        notes: el.notesInput.value.trim(),
         category: el.categoryInput.value.trim() || 'Other',
         date: el.dateInput.value || todayISO(),
         photo: state.pendingPhoto || null,
@@ -605,14 +607,14 @@
 
   function exportCsv(year = state.selectedYear, expenses = activeExpenses()) {
     if (expenses.length === 0) { showToast('No expenses to export yet.'); return; }
-    const rows = [['Date', 'Logged At', 'Vendor', 'Category', 'Amount', 'Location', 'Has Photo']];
+    const rows = [['Date', 'Logged At', 'Vendor', 'Category', 'Amount', 'Notes', 'Location', 'Has Photo']];
     const sorted = [...expenses].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     for (const e of sorted) {
-      rows.push([e.date, fmtTimestamp(e.createdAt), e.vendor, e.category, e.amount.toFixed(2), locationLabel(e), e.photo ? 'Yes' : 'No']);
+      rows.push([e.date, fmtTimestamp(e.createdAt), e.vendor, e.category, e.amount.toFixed(2), e.notes || '', locationLabel(e), e.photo ? 'Yes' : 'No']);
     }
     const spent = totalSpent(expenses);
     rows.push([]);
-    rows.push(['', '', '', 'Total deductible', spent.toFixed(2), '', '']);
+    rows.push(['', '', '', 'Total deductible', spent.toFixed(2), '', '', '']);
 
     const csv = rows.map((r) => r.map(csvEscape).join(',')).join('\n');
     const filename = `write-off-tracker-${year}-expenses.csv`;
@@ -638,6 +640,7 @@
             </div>
             <div class="report-item-amount">${fmtMoney(e.amount)}</div>
           </div>
+          ${e.notes ? `<div class="report-item-notes">${escapeHtml(e.notes)}</div>` : ''}
         </div>
       </div>
     `;

@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Write-Offs">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -95,6 +95,11 @@
       <label class="field">
         <span class="field-label">Vendor / Description</span>
         <input type="text" id="vendorInput" placeholder="e.g. Client lunch, flight, software">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Notes <span class="field-optional">(for your tax pro — printed on the year-end report)</span></span>
+        <textarea id="notesInput" rows="3" placeholder="e.g. Discussed Q3 contract renewal with client over dinner"></textarea>
       </label>
 
       <div class="field">
@@ -221,8 +226,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="db.js?v=3"></script>
-<script src="claude.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="db.js?v=4"></script>
+<script src="claude.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
