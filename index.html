@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Write-Offs">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -180,7 +180,7 @@
 
       <div class="settings-section">
         <span class="field-label section-label">Backup</span>
-        <p class="field-help">Saves a copy of your expenses to a file in your own Google Drive — never through any server of mine, and your API key is never included.</p>
+        <p class="field-help">Saves a copy of your expenses to a file in your own Google Drive — never through any server of mine, and your API key is never included. Once signed in, this happens automatically every time you add, edit, or delete an expense — "Back Up Now" is there if you ever want to trigger it manually.</p>
         <div id="googleSignedOutView">
           <button type="button" class="secondary-btn" id="googleSignInBtn" style="width:100%;">🔒 Sign in with Google</button>
         </div>
@@ -194,9 +194,8 @@
         </div>
       </div>
 
-      <div class="danger-zone">
-        <button class="secondary-btn danger-text" id="resetYearBtn" style="width:100%;">Clear this year's expenses</button>
-        <button class="secondary-btn" id="loadSampleBtn" style="width:100%;margin-top:8px;">🧪 Load sample data (for testing)</button>
+      <div class="settings-section">
+        <button class="secondary-btn" id="loadSampleBtn" style="width:100%;">🧪 Load sample data (for testing)</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -222,8 +221,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="db.js?v=2"></script>
-<script src="claude.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="db.js?v=3"></script>
+<script src="claude.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

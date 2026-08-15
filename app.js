@@ -37,7 +37,7 @@
 
     settingsModalOverlay: $('settingsModalOverlay'),
     apiKeyInput: $('apiKeyInput'), saveSettingsBtn: $('saveSettingsBtn'),
-    resetYearBtn: $('resetYearBtn'), loadSampleBtn: $('loadSampleBtn'),
+    loadSampleBtn: $('loadSampleBtn'),
 
     reportModalOverlay: $('reportModalOverlay'), reportBody: $('reportBody'), printReportBtn: $('printReportBtn'),
     exportReportCsvBtn: $('exportReportCsvBtn'),
@@ -354,6 +354,7 @@
       closeModal(el.expenseModalOverlay);
       renderAll();
       showToast(state.editingId ? 'Expense updated' : `Logged ${fmtMoney(amount)}`);
+      autoBackupIfSignedIn();
 
       // Prefer the address printed on a scanned receipt — it's the actual vendor location,
       // more accurate than GPS. Only fall back to device location when scanning didn't give us one.
@@ -370,6 +371,7 @@
     closeModal(el.expenseModalOverlay);
     renderAll();
     showToast('Expense deleted');
+    autoBackupIfSignedIn();
   });
 
   // Captures where you were when an expense was logged, purely for the CSV export.
@@ -520,15 +522,6 @@
     showToast('Settings saved');
   });
 
-  el.resetYearBtn.addEventListener('click', async () => {
-    if (!confirm(`Delete all logged expenses for ${state.selectedYear}? This cannot be undone.`)) return;
-    const toDelete = activeExpenses();
-    for (const e of toDelete) await DB.deleteExpense(e.id);
-    state.allExpenses = state.allExpenses.filter((e) => !(e.date && e.date.startsWith(String(state.selectedYear))));
-    closeModal(el.settingsModalOverlay);
-    renderAll();
-    showToast(`${state.selectedYear} expenses cleared`);
-  });
 
   // ---------- sample data (testing helper) ----------
   function makeSampleReceiptImage(vendor, addr, lines, total) {
@@ -846,6 +839,23 @@
     return res.json();
   }
 
+  // Silent best-effort backup triggered after every save/delete while signed in. Only
+  // runs when a still-valid access token is already cached — never requests a fresh
+  // one, so it can't pop a surprise Google sign-in prompt in the middle of logging an
+  // expense. Falls back to the next auto-trigger or a manual "Back Up Now".
+  async function autoBackupIfSignedIn() {
+    try {
+      const connected = await DB.getMeta('googleConnected', false);
+      if (!connected) return;
+      if (!googleAccessToken || Date.now() >= googleAccessTokenExpiresAt - 60000) return;
+      const existing = await driveFindBackupFile(googleAccessToken);
+      await driveUploadBackup(googleAccessToken, existing ? existing.id : null, buildBackupPayload());
+      await DB.setMeta('lastBackupAt', Date.now());
+    } catch (e) {
+      // silent — this is a background convenience, not a user-initiated action
+    }
+  }
+
   async function driveDownloadBackup(token, fileId) {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -871,6 +881,7 @@
       await DB.setMeta('googleConnected', true);
       await updateGoogleUI();
       showToast('Connected to Google');
+      autoBackupIfSignedIn().then(updateGoogleUI);
     } catch (e) {
       showToast(e.message || 'Google sign-in failed.');
     }
