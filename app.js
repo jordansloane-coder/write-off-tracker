@@ -35,6 +35,24 @@
     scanLoadingImg: $('scanLoadingImg'), scanErrorText: $('scanErrorText'), scanErrorManualBtn: $('scanErrorManualBtn'),
     scanNoKeyNote: $('scanNoKeyNote'), scanNoKeySettingsLink: $('scanNoKeySettingsLink'),
 
+    mileageBtn: $('mileageBtn'), mileageModalOverlay: $('mileageModalOverlay'),
+    mileageHomeStep: $('mileageHomeStep'), mileageCaptureStep: $('mileageCaptureStep'),
+    mileageLoadingStep: $('mileageLoadingStep'), mileageConfirmStep: $('mileageConfirmStep'),
+    mileageHomeFooter: $('mileageHomeFooter'), mileageConfirmFooter: $('mileageConfirmFooter'),
+    mileagePendingCard: $('mileagePendingCard'), mileagePendingThumb: $('mileagePendingThumb'),
+    mileagePendingMeta: $('mileagePendingMeta'), mileageLogEndingBtn: $('mileageLogEndingBtn'),
+    mileageDiscardBtn: $('mileageDiscardBtn'), mileageStartTripSection: $('mileageStartTripSection'),
+    mileageStartTripBtn: $('mileageStartTripBtn'),
+    mileageMilesInput: $('mileageMilesInput'), mileageRateInput: $('mileageRateInput'),
+    mileageAmountPreview: $('mileageAmountPreview'), mileageContinueBtn: $('mileageContinueBtn'),
+    mileageCaptureHint: $('mileageCaptureHint'), mileageCameraBtn: $('mileageCameraBtn'),
+    mileageLibraryBtn: $('mileageLibraryBtn'), mileageCameraInput: $('mileageCameraInput'),
+    mileageLibraryInput: $('mileageLibraryInput'), mileageSkipPhotoBtn: $('mileageSkipPhotoBtn'),
+    mileageLoadingImg: $('mileageLoadingImg'),
+    mileageConfirmPhotoWrap: $('mileageConfirmPhotoWrap'), mileageConfirmPhotoImg: $('mileageConfirmPhotoImg'),
+    mileageConfirmLabel: $('mileageConfirmLabel'), mileageReadingInput: $('mileageReadingInput'),
+    mileageConfirmBackBtn: $('mileageConfirmBackBtn'), mileageConfirmSaveBtn: $('mileageConfirmSaveBtn'),
+
     settingsModalOverlay: $('settingsModalOverlay'),
     apiKeyInput: $('apiKeyInput'), saveSettingsBtn: $('saveSettingsBtn'),
     loadSampleBtn: $('loadSampleBtn'),
@@ -53,6 +71,12 @@
   let scanPendingPhoto = null; // dataURL being scanned
   let scanFillTarget = 'new';  // 'new' opens a fresh Add Expense modal prefilled with the result. 'inline' fills the fields of the modal that's already open (Read from Photo).
   let currentReportContext = null; // { year, expenses } for whatever the report modal is currently showing
+
+  // ---------- mileage state ----------
+  let mileagePendingTrip = null;   // { startOdometer, startPhoto, startDate, createdAt } — persisted in meta so it survives closing the app
+  let mileageCaptureMode = 'start'; // 'start' | 'end' — which odometer reading is currently being captured
+  let mileageCapturedPhoto = null;  // dataURL just captured/read, awaiting confirm
+  let mileageCompletedTrip = null;  // { startOdometer, startPhoto, endOdometer, endPhoto } — set once a trip's ending mileage is confirmed, used to build the final expense's notes/photo, then cleared
 
   // ---------- utils ----------
   const fmtMoney = (n) => `$${(Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -508,6 +532,193 @@
     }
   });
 
+  // ---------- work mileage ----------
+  function showMileageStep(step) {
+    el.mileageHomeStep.style.display = step === 'home' ? '' : 'none';
+    el.mileageCaptureStep.style.display = step === 'capture' ? '' : 'none';
+    el.mileageLoadingStep.style.display = step === 'loading' ? '' : 'none';
+    el.mileageConfirmStep.style.display = step === 'confirm' ? '' : 'none';
+    el.mileageHomeFooter.style.display = step === 'home' ? '' : 'none';
+    el.mileageConfirmFooter.style.display = step === 'confirm' ? '' : 'none';
+  }
+
+  function renderMileageHome() {
+    if (mileagePendingTrip) {
+      el.mileagePendingCard.style.display = '';
+      el.mileageStartTripSection.style.display = 'none';
+      if (mileagePendingTrip.startPhoto) {
+        el.mileagePendingThumb.src = mileagePendingTrip.startPhoto;
+        el.mileagePendingThumb.style.display = '';
+      } else {
+        el.mileagePendingThumb.style.display = 'none';
+      }
+      el.mileagePendingMeta.textContent = `Started at ${mileagePendingTrip.startOdometer.toLocaleString('en-US')} mi on ${fmtShortDate(mileagePendingTrip.startDate)}`;
+    } else {
+      el.mileagePendingCard.style.display = 'none';
+      el.mileageStartTripSection.style.display = '';
+    }
+  }
+
+  function fmtShortDate(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  async function updateMileageAmountPreview() {
+    const miles = parseFloat(el.mileageMilesInput.value) || 0;
+    const rate = parseFloat(el.mileageRateInput.value) || 0;
+    el.mileageAmountPreview.textContent = fmtMoney(miles * rate);
+  }
+  el.mileageMilesInput.addEventListener('input', updateMileageAmountPreview);
+  el.mileageRateInput.addEventListener('input', updateMileageAmountPreview);
+
+  async function openMileageModal() {
+    mileageCompletedTrip = null;
+    el.mileageMilesInput.value = '';
+    const lastRate = await DB.getMeta('lastMileageRate', null);
+    el.mileageRateInput.value = lastRate != null ? lastRate : '';
+    updateMileageAmountPreview();
+    renderMileageHome();
+    showMileageStep('home');
+    openModal(el.mileageModalOverlay);
+  }
+  el.mileageBtn.addEventListener('click', openMileageModal);
+
+  el.mileageStartTripBtn.addEventListener('click', () => {
+    mileageCaptureMode = 'start';
+    el.mileageCaptureHint.textContent = 'Take a photo of your STARTING odometer, or choose one from your library.';
+    showMileageStep('capture');
+  });
+  el.mileageLogEndingBtn.addEventListener('click', () => {
+    mileageCaptureMode = 'end';
+    el.mileageCaptureHint.textContent = 'Take a photo of your ENDING odometer, or choose one from your library.';
+    showMileageStep('capture');
+  });
+
+  el.mileageDiscardBtn.addEventListener('click', async () => {
+    if (!confirm('Discard this trip? The starting mileage will be cleared.')) return;
+    mileagePendingTrip = null;
+    await DB.setMeta('pendingMileageTrip', null);
+    renderMileageHome();
+    showToast('Trip discarded');
+  });
+
+  el.mileageCameraBtn.addEventListener('click', () => el.mileageCameraInput.click());
+  el.mileageLibraryBtn.addEventListener('click', () => el.mileageLibraryInput.click());
+
+  function openMileageConfirmStep(photoDataUrl, reading) {
+    el.mileageConfirmLabel.textContent = mileageCaptureMode === 'start' ? 'Starting Mileage' : 'Ending Mileage';
+    if (photoDataUrl) {
+      el.mileageConfirmPhotoImg.src = photoDataUrl;
+      el.mileageConfirmPhotoWrap.style.display = '';
+    } else {
+      el.mileageConfirmPhotoWrap.style.display = 'none';
+    }
+    el.mileageReadingInput.value = reading != null ? reading : '';
+    showMileageStep('confirm');
+    setTimeout(() => el.mileageReadingInput.focus(), 200);
+  }
+
+  async function handleMileagePhoto(file) {
+    if (!file) return;
+    try {
+      const raw = await fileToDataUrl(file);
+      const small = await downscaleImage(raw);
+      mileageCapturedPhoto = small;
+
+      if (!state.settings.apiKey) {
+        openMileageConfirmStep(small, null);
+        showToast('Photo attached — add an API key in Settings to auto-fill the reading.');
+        return;
+      }
+
+      showMileageStep('loading');
+      el.mileageLoadingImg.src = small;
+      const { reading } = await ClaudeReceipts.parseOdometerReading(small, state.settings.apiKey);
+      openMileageConfirmStep(small, reading);
+      if (reading == null) showToast('Could not read that odometer — check and enter it manually.');
+    } catch (e) {
+      showToast(e.message || 'Something went wrong reading that photo.');
+      openMileageConfirmStep(mileageCapturedPhoto, null);
+    }
+  }
+  el.mileageCameraInput.addEventListener('change', () => { handleMileagePhoto(el.mileageCameraInput.files[0]); el.mileageCameraInput.value = ''; });
+  el.mileageLibraryInput.addEventListener('change', () => { handleMileagePhoto(el.mileageLibraryInput.files[0]); el.mileageLibraryInput.value = ''; });
+
+  el.mileageSkipPhotoBtn.addEventListener('click', () => {
+    mileageCapturedPhoto = null;
+    openMileageConfirmStep(null, null);
+  });
+
+  el.mileageConfirmBackBtn.addEventListener('click', () => {
+    renderMileageHome();
+    showMileageStep('home');
+  });
+
+  el.mileageConfirmSaveBtn.addEventListener('click', async () => {
+    if (el.mileageConfirmSaveBtn.disabled) return;
+    const reading = parseFloat(el.mileageReadingInput.value);
+    if (!reading || reading <= 0) { showToast('Enter a valid odometer reading.'); el.mileageReadingInput.focus(); return; }
+
+    el.mileageConfirmSaveBtn.disabled = true;
+    try {
+      if (mileageCaptureMode === 'start') {
+        mileagePendingTrip = { startOdometer: reading, startPhoto: mileageCapturedPhoto || null, startDate: todayISO(), createdAt: Date.now() };
+        await DB.setMeta('pendingMileageTrip', mileagePendingTrip);
+        renderMileageHome();
+        showMileageStep('home');
+        showToast('Starting mileage saved');
+      } else {
+        const miles = Math.round((reading - mileagePendingTrip.startOdometer) * 10) / 10;
+        if (miles <= 0) { showToast('Ending mileage should be higher than the starting mileage.'); return; }
+
+        mileageCompletedTrip = {
+          startOdometer: mileagePendingTrip.startOdometer,
+          startPhoto: mileagePendingTrip.startPhoto,
+          endOdometer: reading,
+          endPhoto: mileageCapturedPhoto || null,
+        };
+        mileagePendingTrip = null;
+        await DB.setMeta('pendingMileageTrip', null);
+
+        el.mileageMilesInput.value = miles;
+        updateMileageAmountPreview();
+        renderMileageHome(); // now shows the "start a trip" section again, since the trip is done
+        showMileageStep('home');
+        showToast('Trip logged — review and add the expense below.');
+      }
+    } finally {
+      el.mileageConfirmSaveBtn.disabled = false;
+    }
+  });
+
+  el.mileageContinueBtn.addEventListener('click', async () => {
+    if (el.mileageContinueBtn.disabled) return;
+    const miles = parseFloat(el.mileageMilesInput.value);
+    const rate = parseFloat(el.mileageRateInput.value);
+    if (!miles || miles <= 0) { showToast('Enter the miles driven.'); el.mileageMilesInput.focus(); return; }
+    if (!rate || rate <= 0) { showToast('Enter a rate per mile.'); el.mileageRateInput.focus(); return; }
+
+    el.mileageContinueBtn.disabled = true;
+    try {
+      await DB.setMeta('lastMileageRate', rate);
+      const amount = Math.round(miles * rate * 100) / 100;
+
+      let notes = `${miles} mi @ ${fmtMoney(rate)}/mi`;
+      let photo = null;
+      if (mileageCompletedTrip) {
+        notes += ` (odometer ${mileageCompletedTrip.startOdometer.toLocaleString('en-US')} → ${mileageCompletedTrip.endOdometer.toLocaleString('en-US')})`;
+        photo = mileageCompletedTrip.endPhoto || mileageCompletedTrip.startPhoto || null;
+      }
+
+      closeModal(el.mileageModalOverlay);
+      openExpenseModal(null, { amount, vendor: 'Business Mileage', category: 'Mileage', notes, photo, date: todayISO() });
+
+      mileageCompletedTrip = null;
+    } finally {
+      el.mileageContinueBtn.disabled = false;
+    }
+  });
+
   // ---------- settings ----------
   function openSettingsModal() {
     el.apiKeyInput.value = state.settings.apiKey || '';
@@ -941,6 +1152,7 @@
   async function init() {
     state.settings.apiKey = await DB.getMeta('apiKey', '');
     state.allExpenses = await DB.getAllExpenses();
+    mileagePendingTrip = await DB.getMeta('pendingMileageTrip', null);
 
     // Default to the most recent year with expenses on it, or this calendar year if empty.
     if (state.allExpenses.length) {

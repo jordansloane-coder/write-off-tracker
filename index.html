@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Write-Offs">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -44,6 +44,11 @@
     </button>
     <button class="fab-btn primary" id="addBtn">
       <span class="fab-icon">＋</span><span>Add Expense</span>
+    </button>
+  </div>
+  <div class="quick-add quick-add-secondary">
+    <button class="fab-btn secondary" id="mileageBtn" style="width:100%;">
+      <span class="fab-icon">🚗</span><span>Add Work Mileage</span>
     </button>
   </div>
 
@@ -169,6 +174,97 @@
   </div>
 </div>
 
+<!-- Mileage Modal -->
+<div class="modal-overlay" id="mileageModalOverlay">
+  <div class="modal" id="mileageModal">
+    <div class="modal-header">
+      <h3>Work Mileage</h3>
+      <button class="icon-btn" data-close="mileageModalOverlay">✕</button>
+    </div>
+    <div class="modal-body" id="mileageModalBody">
+
+      <div id="mileageHomeStep">
+        <div id="mileagePendingCard" class="mileage-pending-card" style="display:none;">
+          <div class="mileage-pending-row">
+            <img id="mileagePendingThumb" class="mileage-pending-thumb" alt="Starting odometer">
+            <div>
+              <div class="mileage-pending-title">Trip in progress</div>
+              <div class="mileage-pending-meta" id="mileagePendingMeta"></div>
+            </div>
+          </div>
+          <div class="photo-row">
+            <button type="button" class="primary-btn" id="mileageLogEndingBtn">📷 Log Ending Mileage</button>
+          </div>
+          <button type="button" class="link-btn mileage-discard-link" id="mileageDiscardBtn">Discard this trip</button>
+        </div>
+
+        <div id="mileageStartTripSection">
+          <button type="button" class="ai-read-btn" id="mileageStartTripBtn" style="margin:2px 0 20px;">
+            <span class="fab-icon">📷</span><span>Start a Trip — photograph your starting odometer</span>
+          </button>
+        </div>
+
+        <p class="scan-hint" style="margin-top:0;">Or enter the trip manually:</p>
+
+        <label class="field">
+          <span class="field-label">Miles Driven</span>
+          <input type="number" inputmode="decimal" step="0.1" min="0" id="mileageMilesInput" placeholder="0">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Rate <span class="field-optional">(per mile — check the current IRS standard mileage rate)</span></span>
+          <div class="amount-input-wrap">
+            <span class="dollar-sign">$</span>
+            <input type="number" inputmode="decimal" step="0.001" min="0" id="mileageRateInput" placeholder="0.00">
+          </div>
+        </label>
+
+        <div class="mileage-amount-preview">
+          <span>Amount</span>
+          <span id="mileageAmountPreview">$0.00</span>
+        </div>
+      </div>
+
+      <div id="mileageCaptureStep" class="scan-step" style="display:none;">
+        <p class="scan-hint" id="mileageCaptureHint">Take a photo of your odometer, or choose one from your library.</p>
+        <div class="scan-choose-row">
+          <button class="secondary-btn big" id="mileageCameraBtn">📷 Camera</button>
+          <button class="secondary-btn big" id="mileageLibraryBtn">🖼️ Library</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" id="mileageCameraInput" style="display:none;">
+        <input type="file" accept="image/*" id="mileageLibraryInput" style="display:none;">
+        <button type="button" class="link-btn mileage-discard-link" id="mileageSkipPhotoBtn">Skip photo — enter reading manually</button>
+      </div>
+
+      <div id="mileageLoadingStep" class="scan-step" style="display:none;">
+        <div class="scan-loading-img-wrap">
+          <img id="mileageLoadingImg" class="receipt-preview-img" alt="Odometer">
+        </div>
+        <div class="spinner"></div>
+        <p class="scan-hint">Reading odometer…</p>
+      </div>
+
+      <div id="mileageConfirmStep" style="display:none;">
+        <div id="mileageConfirmPhotoWrap" class="receipt-preview-wrap" style="display:none;">
+          <img id="mileageConfirmPhotoImg" class="receipt-preview-img" alt="Odometer">
+        </div>
+        <label class="field">
+          <span class="field-label" id="mileageConfirmLabel">Starting Mileage</span>
+          <input type="number" inputmode="decimal" step="0.1" min="0" id="mileageReadingInput" placeholder="0">
+        </label>
+      </div>
+
+    </div>
+    <div class="modal-footer" id="mileageHomeFooter">
+      <button class="primary-btn" id="mileageContinueBtn">Continue</button>
+    </div>
+    <div class="modal-footer" id="mileageConfirmFooter" style="display:none;">
+      <button class="secondary-btn" id="mileageConfirmBackBtn">‹ Back</button>
+      <button class="primary-btn" id="mileageConfirmSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Settings Modal -->
 <div class="modal-overlay" id="settingsModalOverlay">
   <div class="modal" id="settingsModal">
@@ -226,8 +322,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="db.js?v=4"></script>
-<script src="claude.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="db.js?v=5"></script>
+<script src="claude.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

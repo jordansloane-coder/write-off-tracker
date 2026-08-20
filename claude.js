@@ -15,6 +15,12 @@ Category must be one of: "Business Meals", "Travel", "Mileage", "Equipment", "Su
 "address" is whatever street address / city / location text is printed on the receipt itself (often near the top, under the store name) — not a guess, only what's actually legible on the page.
 If a field truly cannot be determined from the image, use null for it. Never fabricate a value.`;
 
+  const ODOMETER_SYSTEM_PROMPT = `You read photos of a vehicle's dashboard to extract the odometer reading, for someone logging mileage for a tax deduction.
+Respond with ONLY raw JSON, no markdown fences, no commentary, matching exactly this shape:
+{"reading": number|null}
+"reading" is the TOTAL cumulative odometer mileage shown — not the trip meter (if both a trip meter and a total odometer are visible, use the total odometer, which is usually the larger, non-resettable number). Read only the whole-number mileage digits.
+If the reading truly cannot be determined from the image, use null. Never fabricate a value.`;
+
   function stripDataUrlPrefix(dataUrl) {
     const match = /^data:(image\/[a-zA-Z+]+);base64,(.*)$/.exec(dataUrl);
     if (!match) throw new Error('Unexpected image format.');
@@ -94,6 +100,14 @@ If a field truly cannot be determined from the image, use null for it. Never fab
         category: typeof parsed.category === 'string' ? parsed.category : null,
         address: typeof parsed.address === 'string' ? parsed.address : null,
       };
+    },
+
+    async parseOdometerReading(imageDataUrl, apiKey) {
+      const parsed = await callClaudeVision(
+        imageDataUrl, apiKey, ODOMETER_SYSTEM_PROMPT,
+        'Read the odometer in this photo and return the JSON described in your instructions.'
+      );
+      return { reading: typeof parsed.reading === 'number' ? parsed.reading : null };
     },
   };
 })();
