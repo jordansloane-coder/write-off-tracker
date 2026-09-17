@@ -11,6 +11,7 @@
     editingId: null,
     pendingPhoto: null,   // dataURL currently attached in the expense modal
     pendingAddress: null, // address text currently attached in the expense modal (from a scanned receipt)
+    searchQuery: '',      // filters the on-screen list by notes/vendor/category substring
   };
 
   // ---------- element refs ----------
@@ -19,6 +20,8 @@
     bigNumber: $('bigNumber'), bigSub: $('bigSub'),
     yearLabel: $('yearLabel'), yearPrevBtn: $('yearPrevBtn'), yearNextBtn: $('yearNextBtn'),
     expenseList: $('expenseList'), emptyState: $('emptyState'), countPill: $('countPill'),
+    searchInput: $('searchInput'), searchTotalBar: $('searchTotalBar'),
+    searchTotalQuery: $('searchTotalQuery'), searchTotalAmount: $('searchTotalAmount'),
     addBtn: $('addBtn'), scanBtn: $('scanBtn'), menuBtn: $('menuBtn'), settingsBtn: $('settingsBtn'),
 
     expenseModalOverlay: $('expenseModalOverlay'), expenseModalTitle: $('expenseModalTitle'),
@@ -153,6 +156,19 @@
     return expensesForYear(state.selectedYear);
   }
 
+  // Filters the current year's expenses by a free-text search against notes, vendor,
+  // and category — lets a word typed into notes (e.g. a trip name like "Seattle") work
+  // as an ad hoc tag without needing a dedicated tag field.
+  function searchedExpenses() {
+    const q = state.searchQuery.trim().toLowerCase();
+    if (!q) return activeExpenses();
+    return activeExpenses().filter((e) =>
+      (e.notes || '').toLowerCase().includes(q) ||
+      (e.vendor || '').toLowerCase().includes(q) ||
+      (e.category || '').toLowerCase().includes(q)
+    );
+  }
+
   function totalSpent(expenses = activeExpenses()) {
     return expenses.reduce((sum, e) => sum + e.amount, 0);
   }
@@ -184,10 +200,22 @@
   };
 
   function renderList() {
-    const expenses = activeExpenses();
+    const expenses = searchedExpenses();
     el.expenseList.innerHTML = '';
     el.emptyState.classList.toggle('visible', expenses.length === 0);
+    $('emptyStateText').textContent = state.searchQuery.trim()
+      ? 'No expenses match that search.'
+      : 'No deductible expenses logged yet. Log one, or scan a receipt.';
     el.countPill.textContent = String(expenses.length);
+
+    const q = state.searchQuery.trim();
+    if (q) {
+      el.searchTotalBar.style.display = '';
+      el.searchTotalQuery.textContent = q;
+      el.searchTotalAmount.textContent = fmtMoney(totalSpent(expenses));
+    } else {
+      el.searchTotalBar.style.display = 'none';
+    }
 
     for (const expense of expenses) {
       const li = document.createElement('li');
@@ -230,6 +258,11 @@
   el.yearNextBtn.addEventListener('click', () => {
     state.selectedYear += 1;
     renderAll();
+  });
+
+  el.searchInput.addEventListener('input', () => {
+    state.searchQuery = el.searchInput.value;
+    renderList();
   });
 
   // ---------- expense modal ----------
@@ -816,7 +849,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
-  function exportCsv(year = state.selectedYear, expenses = activeExpenses()) {
+  function exportCsv(year = state.selectedYear, expenses = searchedExpenses()) {
     if (expenses.length === 0) { showToast('No expenses to export yet.'); return; }
     const rows = [['Date', 'Logged At', 'Vendor', 'Category', 'Amount', 'Notes', 'Location', 'Has Photo']];
     const sorted = [...expenses].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -828,9 +861,14 @@
     rows.push(['', '', '', 'Total deductible', spent.toFixed(2), '', '', '']);
 
     const csv = rows.map((r) => r.map(csvEscape).join(',')).join('\n');
-    const filename = `write-off-tracker-${year}-expenses.csv`;
+    const q = state.searchQuery.trim();
+    const filename = q
+      ? `write-off-tracker-${year}-${q.replace(/[^a-z0-9]+/gi, '-')}.csv`
+      : `write-off-tracker-${year}-expenses.csv`;
     downloadBlob(new Blob([csv], { type: 'text/csv' }), filename);
-    showToast('CSV downloaded');
+    showToast(q
+      ? `CSV downloaded — ${expenses.length} expense${expenses.length === 1 ? '' : 's'} matching "${q}" (not your full ${year})`
+      : 'CSV downloaded');
   }
 
   $('exportCsvBtn').addEventListener('click', () => exportCsv());

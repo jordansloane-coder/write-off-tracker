@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Write-Offs">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -58,10 +58,15 @@
       <h2>Expenses</h2>
       <span class="count-pill" id="countPill">0</span>
     </div>
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search notes, vendor, category…">
+    <div class="search-total-bar" id="searchTotalBar" style="display:none;">
+      <span>Matches for "<span id="searchTotalQuery"></span>"</span>
+      <span id="searchTotalAmount">$0.00</span>
+    </div>
     <ul id="expenseList" class="expense-list"></ul>
     <div class="empty-state" id="emptyState">
       <div class="empty-emoji">🧾</div>
-      <p>No deductible expenses logged yet. Log one, or scan a receipt.</p>
+      <p id="emptyStateText">No deductible expenses logged yet. Log one, or scan a receipt.</p>
     </div>
   </main>
 
@@ -322,8 +327,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="db.js?v=5"></script>
-<script src="claude.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="db.js?v=6"></script>
+<script src="claude.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
