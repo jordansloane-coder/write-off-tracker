@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Write-Offs">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -139,6 +139,14 @@
       <button class="secondary-btn" id="deleteExpenseBtn" style="display:none;">Delete</button>
       <button class="primary-btn" id="saveExpenseBtn">Save</button>
     </div>
+  </div>
+</div>
+
+<!-- Full-screen Photo Viewer (reused wherever a receipt photo is shown) -->
+<div class="modal-overlay photo-viewer-overlay" id="photoViewerOverlay">
+  <button class="icon-btn photo-viewer-close" id="photoViewerCloseBtn" data-close="photoViewerOverlay" aria-label="Close">✕</button>
+  <div class="photo-viewer-scroll" id="photoViewerScroll">
+    <img id="photoViewerImg" alt="Receipt" draggable="false">
   </div>
 </div>
 
@@ -327,8 +335,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="db.js?v=6"></script>
-<script src="claude.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="db.js?v=7"></script>
+<script src="claude.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
